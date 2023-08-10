@@ -14,6 +14,7 @@ from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
 # from scipy.stats import binom
+from pandas.plotting import scatter_matrix
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -145,10 +146,23 @@ housing = strat_train_set_n.copy()
     Im going to generate the final example of the scatter plot from the 
     book's example. This takes into account latitude and longitude as well 
     as median house values in a predefined jet color map. 
-"""
 
-housing.plot(kind="scatter", x="longitude", y="latitude", grid=True,
+    housing.plot(kind="scatter", x="longitude", y="latitude", grid=True,
              s=housing["population"] / 100, label="population",
              c="median_house_value", colorbar=True,
              legend=True, sharex=False, figsize=(10, 7))
+plt.show()
+"""
+
+""" 
+For some weird ass reason ocean proximity column interferes to find pearsons
+correlation. I dropped said column. Error shown was of type conversion. 
+"""
+
+housing.drop("ocean_proximity", axis=1, inplace=True)
+
+attributes = ["median_house_value", "median_income", "total_rooms",
+              "housing_median_age"]
+scatter_matrix(housing[attributes], figsize=(12, 8))
+
 plt.show()
