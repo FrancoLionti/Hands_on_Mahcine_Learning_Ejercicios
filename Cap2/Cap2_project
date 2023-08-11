@@ -148,9 +148,9 @@ housing = strat_train_set_n.copy()
     as median house values in a predefined jet color map. 
 
     housing.plot(kind="scatter", x="longitude", y="latitude", grid=True,
-             s=housing["population"] / 100, label="population",
-             c="median_house_value", colorbar=True,
-             legend=True, sharex=False, figsize=(10, 7))
+            s=housing["population"] / 100, label="population",
+            c="median_house_value", colorbar=True,
+            legend=True, sharex=False, figsize=(10, 7))
 plt.show()
 """
 
@@ -161,8 +161,45 @@ correlation. I dropped said column. Error shown was of type conversion.
 
 housing.drop("ocean_proximity", axis=1, inplace=True)
 
+""" 
+corr_matrix = housing.corr()    # Pearson's correlation.
+corr_matrix["median_house_value"].sort_values(ascending=False) 
+# Calculates how much each parameter correlates to median house value.
+"""
+
+""" 
+Scatter plot matrix: This method plots every attribute in the passed 
+array against every other numerical attribute.
+
 attributes = ["median_house_value", "median_income", "total_rooms",
-              "housing_median_age"]
+            "housing_median_age"]
 scatter_matrix(housing[attributes], figsize=(12, 8))
 
 plt.show()
+"""
+
+""" 
+Income vs house value plot:
+
+housing.plot(kind="scatter", x="median_income", y="median_house_value",
+            alpha=0.1, grid=True)
+plt.show() 
+"""
+
+""" 
+Setting up new parameters (which are all attribute combinations) to see 
+if they correlate with median house value.
+"""
+
+housing["rooms_per_house"] = housing["total_rooms"]/housing["households"]
+housing["bedrooms_ratio"] = housing["total_bedrooms"]/housing["total_rooms"]
+housing["people_per_house"] = housing["population"]/housing["households"]
+
+# corr_matrix = housing.corr()
+# print(corr_matrix["median_house_value"].sort_values(ascending=False))
+
+""" Reverting to a clean training set: """
+
+housing = strat_train_set_n.drop("median_house_value", axis=1)
+housing_labels = strat_train_set_n["median_house_value"].copy()
+
