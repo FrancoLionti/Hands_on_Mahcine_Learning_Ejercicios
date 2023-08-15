@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
 # from scipy.stats import binom
 from pandas.plotting import scatter_matrix
+from sklearn.impute import SimpleImputer
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -203,3 +204,56 @@ housing["people_per_house"] = housing["population"]/housing["households"]
 housing = strat_train_set_n.drop("median_house_value", axis=1)
 housing_labels = strat_train_set_n["median_house_value"].copy()
 
+""" Cleaning up the data: """
+
+""" 
+
+#Alternative 1
+
+housing.dropna(subset=["total_bedrooms"],inplace=True)
+
+#Alternative 2
+
+housing.drop("total_bedrooms", axis=1)
+
+#Alternative 3. This is the chosen one since is the least destructive 
+for the dataset
+
+"""
+
+""" 
+Here i replaced the missing values with the median so it does not bias the data.
+Any other value than the median will affect the result by driving the fit towards
+the extremes. this is achieved by the function SimpleImputer. This technique is
+called imputation.
+
+Then the Imputer calculated the mean and stored into an attribute called 
+".statistics_".
+
+Finally the data gets fitted and then transformed by the .transform() method.
+"""
+
+median = housing["total_bedrooms"].median() #3
+
+housing["total_bedrooms"].fillna(median, inplace=True)
+
+imputer = SimpleImputer(strategy="median")
+
+housing_num = housing.select_dtypes(include=[np.number])
+
+imputer.fit(housing_num)
+
+imputer.statistics_
+housing_num.median().values
+
+X = imputer.transform(housing_num)
+
+""" 
+Finally the numpy array is converted back into a pandas dataframe by wrapping
+X into a DataFrame using pandas and recovering the column names and index from
+housing_num.
+
+"""
+
+housing_tr = pd.DataFrame(X, columns=housing_num.columns, 
+                        index=housing_num.index)
