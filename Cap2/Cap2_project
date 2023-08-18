@@ -14,8 +14,10 @@ from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
 # from scipy.stats import binom
-from pandas.plotting import scatter_matrix
+# from pandas.plotting import scatter_matrix
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import OneHotEncoder
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -233,6 +235,7 @@ Then the Imputer calculated the mean and stored into an attribute called
 Finally the data gets fitted and then transformed by the .transform() method.
 """
 
+
 median = housing["total_bedrooms"].median() #3
 
 housing["total_bedrooms"].fillna(median, inplace=True)
@@ -255,5 +258,36 @@ housing_num.
 
 """
 
+""" Transformer:
+    At last i get some sense of what the actual heck a transformer is. I mean 
+    You hear about transformers in ML everywhere but i never really understood
+    what they are. Here i get a pretty clear picture that a transformer's actual
+    purpose is to transform the data (so far the only type of transformation 
+    i've seen is of datatype from a matrix to a vector).
+"""
 housing_tr = pd.DataFrame(X, columns=housing_num.columns, 
                         index=housing_num.index)
+
+housing_cat = housing[["ocean_proximity"]]
+# print(housing_cat.head(8))
+
+""" Data encoding:
+    Here i encoded the data by assigning an ordinal number to each category.
+    it is done by the OrdinalEncoder class preexistent in sklearn.
+    Another option is to use the OneHotEncoder class. This is done by assinging
+    a binary number to each category.
+"""
+
+ordinal_encoder = OrdinalEncoder()
+housing_cat_encoded =  ordinal_encoder.fit_transform(housing_cat)
+
+# print(housing_cat_encoded[:8]) # Prints some registries
+
+# print(ordinal_encoder.categories_) # Prints all the categories
+
+cat_encoder = OneHotEncoder()
+housing_cat_1hot = cat_encoder.fit_transform(housing_cat)
+
+# print(housing_cat_1hot.__class__) # Prints the one hot type = matrix
+
+housing_cat_1hot.toarray() # Converts the one hot matrix into array
