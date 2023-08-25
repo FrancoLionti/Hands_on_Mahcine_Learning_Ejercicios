@@ -291,3 +291,32 @@ housing_cat_1hot = cat_encoder.fit_transform(housing_cat)
 # print(housing_cat_1hot.__class__) # Prints the one hot type = matrix
 
 housing_cat_1hot.toarray() # Converts the one hot matrix into array
+
+""" 
+    Just as clarification the usage of sparse matrices is justified in terms
+    of efficiency in space. More specifically, lets say we have a sparse matrix
+    it only stores the non-zero values and the location of the non-zero values.
+    Therefore it only uses the instructions to fill the matrix and avoids the
+    unnecesary usage of resources.
+"""
+
+# print(cat_encoder.categories_) # Prints all the categories
+
+""" Typing this but not using it since it is not the best choice for the model
+    and also, since the model is in production this will generate erroneous 
+    results.
+"""
+
+df_test = pd.DataFrame({"ocean_proximity": ["INLAND", "NEAR BAY"]})
+pd.get_dummies(df_test)
+
+df_test_unknown = pd.DataFrame({"ocean_proximity": ["<2H OCEAN", "ISLAND"]})
+pd.get_dummies(df_test_unknown)
+
+cat_encoder.handle_unknown = "ignore"
+cat_encoder.transform(df_test_unknown)
+
+cat_encoder.feature_names_in_
+cat_encoder.get_feature_names_out()
+df_output=pd.DataFrame(cat_encoder.transform(df_test_unknown))
+
