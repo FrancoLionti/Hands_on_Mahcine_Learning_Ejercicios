@@ -18,6 +18,8 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -319,4 +321,11 @@ cat_encoder.transform(df_test_unknown)
 cat_encoder.feature_names_in_
 cat_encoder.get_feature_names_out()
 df_output=pd.DataFrame(cat_encoder.transform(df_test_unknown))
+
+""" Scaling:
+
+"""
+
+min_max_scaler = MinMaxScaler(feature_range=(-1, 1))
+housing_num_min_max_scaled = min_max_scaler.fit_transform(housing_num)
 
