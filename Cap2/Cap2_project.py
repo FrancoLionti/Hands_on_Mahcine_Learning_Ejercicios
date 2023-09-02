@@ -20,6 +20,7 @@ from sklearn.preprocessing import OrdinalEncoder
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics.pairwise import rbf_kernel
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -294,7 +295,7 @@ housing_cat_1hot = cat_encoder.fit_transform(housing_cat)
 
 housing_cat_1hot.toarray() # Converts the one hot matrix into array
 
-""" 
+""" Note:
     Just as clarification the usage of sparse matrices is justified in terms
     of efficiency in space. More specifically, lets say we have a sparse matrix
     it only stores the non-zero values and the location of the non-zero values.
@@ -323,9 +324,67 @@ cat_encoder.get_feature_names_out()
 df_output=pd.DataFrame(cat_encoder.transform(df_test_unknown))
 
 """ Scaling:
+    
+    Minmax scaling: This is more sensible to fitting bias. I.e if the data contains
+    outliers, they will be scaled amongst the limits and could affect the 
+    result. This is when you divide by the maximum value and substract the 
+    minimum value in order to generate a 0-1 scale for the data.
 
+    Standard scaling: This type of scaling begins by subtracting the mean value 
+    (so standardized values have a zero mean), then it divides the result by 
+    the standard deviation (so standardized values have a standard 
+    deviation equal to 1).
 """
 
 min_max_scaler = MinMaxScaler(feature_range=(-1, 1))
 housing_num_min_max_scaled = min_max_scaler.fit_transform(housing_num)
+std_scaler = StandardScaler()
+housing_num_std_scaled = std_scaler.fit_transform(housing_num)
+
+""" Plotting:
+# Plot the current population distribution bia Hist method
+
+fig, axs = plt.subplots(1, 2, figsize=(8, 3), sharey=True)
+housing["population"].hist(ax=axs[0], bins=50)
+housing["population"].apply(np.log).hist(ax=axs[1], bins=50)
+axs[0].set_xlabel("Population")
+axs[1].set_xlabel("Log of population")
+axs[0].set_ylabel("Number of districts")
+plt.show() 
+"""
+
+""" Bucketsizing: 
+    This is a way to conglomerate the data into buckets. This 
+    buckets are defined by some sort of encoding. What this achieves is to 
+    smooth the data in order to prevent overfitting, as well as improve the
+    model's learning capabilities.
+"""
+
+""" Plotting bucketsized data:
+
+age_simil_35 = rbf_kernel(housing[["housing_median_age"]], [[35]], gamma=0.1)
+ages = np.linspace(housing["housing_median_age"].min(),
+                housing["housing_median_age"].max(),
+                500).reshape(-1, 1)
+gamma1 = 0.1
+gamma2 = 0.03
+rbf1 = rbf_kernel(ages, [[35]], gamma=gamma1)
+rbf2 = rbf_kernel(ages, [[35]], gamma=gamma2)
+
+fig, ax1 = plt.subplots()
+
+ax1.set_xlabel("Housing median age")
+ax1.set_ylabel("Number of districts")
+ax1.hist(housing["housing_median_age"], bins=50)
+
+ax2 = ax1.twinx()  # create a twin axis that shares the same x-axis
+color = "blue"
+ax2.plot(ages, rbf1, color=color, label="gamma = 0.10")
+ax2.plot(ages, rbf2, color=color, label="gamma = 0.03", linestyle="--")
+ax2.tick_params(axis='y', labelcolor=color)
+ax2.set_ylabel("Age similarity", color=color)
+
+plt.legend(loc="upper left")
+plt.show() 
+"""
 
