@@ -21,6 +21,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import rbf_kernel
+from sklearn.linear_model import LinearRegression
+from sklearn.compose import TransformedTargetRegressor
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -388,3 +390,19 @@ plt.legend(loc="upper left")
 plt.show() 
 """
 
+target_scaler=StandardScaler()
+scaled_labels=target_scaler.fit_transform(housing_labels.to_frame())
+
+model=LinearRegression()
+model.fit(housing[["median_income"]],scaled_labels)
+some_new_data=housing[["median_income"]].iloc[:5] # Pretend it is "new" data
+
+scaled_predictions=model.predict(some_new_data)
+predictions=target_scaler.inverse_transform(scaled_predictions)
+
+model=TransformedTargetRegressor(regressor=LinearRegression(), 
+                                transformer=StandardScaler())
+
+model.fit(housing[["median_income"]],housing_labels)
+predictions=model.predict(some_new_data)
+print(predictions)
