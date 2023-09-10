@@ -23,6 +23,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.linear_model import LinearRegression
 from sklearn.compose import TransformedTargetRegressor
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_array, check_is_fitted
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -405,4 +408,60 @@ model=TransformedTargetRegressor(regressor=LinearRegression(),
 
 model.fit(housing[["median_income"]],housing_labels)
 predictions=model.predict(some_new_data)
-print(predictions)
+
+
+""" Building custom transformers:
+    
+    Here i use a method called FunctionTransformer, it basically takes a
+    function and applies it to the data. It is mainly used to build custom
+    transformers.
+
+    Later on a StandardScalerClone function is implemented.
+    This one is written in the book mostly for illustrative purposes.
+    It's usefull because it provides a blueprint class for constructing
+    a custom transformer. But most importantly the book emphazises on the fact
+    that any custom transformer should have the following methods:
+    fit, transform and fit_transform.
+
+    Write about: Cluster similarity transformer.
+"""
+
+log_transformer = FunctionTransformer(np.log,inverse_func=np.exp)
+log_pop = log_transformer.transform(housing[["population"]])
+
+rbf_transformer = FunctionTransformer(rbf_kernel,kw_args=dict(Y=[[35.]],gamma=0.1))
+age_simil_35 = rbf_transformer.transform(housing[["housing_median_age"]])
+
+ratio_transformer = FunctionTransformer(lambda X: X[:,[0]]/X[:,[1]])
+ratio_transformer.transform(np.array([[1.,2.],[3.,4.]]))
+
+class StandardScalerClone(BaseEstimator, TransformerMixin):
+    def __init__(self, with_mean=True): # no *args or **kwargs!
+        self.with_mean = with_mean
+    def fit(self, X, y=None): # y is required even though we don't use it
+        X = check_array(X) # checks that X is an array with finite float valuesself.mean_ = X.mean(axis=0)
+        self.scale_ = X.std(axis=0)
+        self.n_features_in_ = X.shape[1] # every estimator stores this in fit()
+        return self # always return self!
+    def transform(self, X):
+        check_is_fitted(self) # looks for learned attributes (with trailing _)
+        X = check_array(X)
+        assert self.n_features_in_ == X.shape[1]
+        if self.with_mean:
+            X = X - self.mean_
+        return X / self.scale_
+
+
+class ClusterSimilarity(BaseEstimator, TransformerMixin):
+    def __init__(self, n_clusters=10, gamma=1.0, random_state=None):
+        self.n_clusters = n_clusters
+        self.gamma = gamma
+        self.random_state = random_state
+    def fit(self, X, y=None, sample_weight=None):
+        self.kmeans_ = KMeans(self.n_clusters, random_state=self.random_state)
+        self.kmeans_.fit(X, sample_weight=sample_weight)
+        return self # always return self!
+    def transform(self, X):
+        return rbf_kernel(X, self.kmeans_.cluster_centers_, gamma=self.gamma)
+    def get_feature_names_out(self, names=None):
+        return [f"Cluster {i} similarity" for i in range(self.n_clusters)]
