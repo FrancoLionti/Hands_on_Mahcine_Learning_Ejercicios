@@ -492,3 +492,5 @@ class ClusterSimilarity(BaseEstimator, TransformerMixin):
 cluster_simil = ClusterSimilarity(n_clusters=10, gamma=1., random_state=42)
 similarities = cluster_simil.fit_transform(housing[["latitude", "longitude"]],
 sample_weight=housing_labels)
+
+# print(similarities[:3].round(2))
