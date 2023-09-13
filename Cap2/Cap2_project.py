@@ -26,6 +26,7 @@ from sklearn.compose import TransformedTargetRegressor
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.cluster import KMeans
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -465,3 +466,29 @@ class ClusterSimilarity(BaseEstimator, TransformerMixin):
         return rbf_kernel(X, self.kmeans_.cluster_centers_, gamma=self.gamma)
     def get_feature_names_out(self, names=None):
         return [f"Cluster {i} similarity" for i in range(self.n_clusters)]
+    
+""" 
+    The cluster similarity class is a class that is implemented in the book in 
+    order to categorize the data. The Kmeans algorithm fits the samples by 
+    measuring a parameter known as "inertia". Said parameter is described 
+    mathematically as the sum of squares. The difference between each cluster 
+    is determined by the "proximity" of each of the samples variance to the 
+    cluster value. The number of clusters is passed as an imput (hyperparameter
+    since it's a ml algorithm in this case) on the function.
+"""
+
+""" 
+    I really liked this explanation from the book so here it goes:
+    "
+    This code creates a ClusterSimilarity transformer, setting the number of
+    clusters to 10. Then it calls fit_transform() with the latitude and 
+    longitude of every district in the training set, weighting each district
+    by its median house value. The transformer uses k-means to locate the
+    clusters, then measures the Gaussian RBF similarity between each district
+    and all 10 cluster centers. The result is a matrix with one row per district,
+    and one column per cluster."
+"""
+
+cluster_simil = ClusterSimilarity(n_clusters=10, gamma=1., random_state=42)
+similarities = cluster_simil.fit_transform(housing[["latitude", "longitude"]],
+sample_weight=housing_labels)
