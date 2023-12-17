@@ -1,3 +1,4 @@
+import imp
 import sys
 assert sys.version_info >= (3, 7), "Requires Python >= 3.7"
 from packaging import version
@@ -22,11 +23,13 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.linear_model import LinearRegression
-from sklearn.compose import TransformedTargetRegressor
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.compose import TransformedTargetRegressor, ColumnTransformer, make_column_selector, make_column_transformer
+from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array, check_is_fitted
 from sklearn.cluster import KMeans
+from sklearn.pipeline import Pipeline, make_pipeline
+
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -72,7 +75,7 @@ less than 2^32 times the passed test_ratio.
 """
 
 def is_id_in_test_set(identifier, test_ratio):
-    return crc32(np.int64(identifier)) < test_ratio * 2**32
+    return crc32(np.int64(identifier) < test_ratio * 2**32)
 
 def split_data_with_id_hash(data, test_ratio, id_column):
     ids = data[id_column]
@@ -80,10 +83,10 @@ def split_data_with_id_hash(data, test_ratio, id_column):
     return data.loc[~in_test_set], data.loc[in_test_set]
 
 """ 
-I used this by the books example but in the end another more efective and 
-preexistent implementation is suggested (I'll leave the functions untouched 
-in the code so i can consult them if i need to get a glimpse of what the 
-code is doing).
+I used the following example just for practice purposes. At the end of the 
+section another implementation is suggested (which is actually preferable).
+(I'll leave the functions untouched in the code so i can consult them if 
+i need to get a glimpse of what the code does).
 
 housing_with_id = housing.reset_index() # Adds an 'index' column
 train_set, test_set = split_data_with_id_hash(housing, 0.2, "longitude")
@@ -117,7 +120,7 @@ bins=[0,1.5,3,4.5,6,np.inf],labels=[1,2,3,4,5])
 """ 
 Generating a bar plot from the sorted array
 
-housing["income_cat"].value_counts().sort_index().plot.bar(rot=0,grid=True) 
+housing["income_cat"].value_counts().sort_index().plot.bar(rot=0,grid=True)
 
 plt.xlabel("Income Category")
 plt.ylabel("Number of districts")
@@ -149,8 +152,8 @@ for set_ in (strat_train_set_n, strat_test_set_n):
     set_.drop("income_cat", axis=1, inplace=True)
 
 """ Now i need to explore and visualize the current data. Therefore im going
-to define a exploration set since the data is too big. Im going to do this by
-just copying the dataframe. """
+to define an exploration set. This is done because the data is too big.
+Im going to do this by just copying the dataframe. """
 
 housing = strat_train_set_n.copy()
 
@@ -272,7 +275,7 @@ housing_num.
     You hear about transformers in ML everywhere but i never really understood
     what they are. Here i get a pretty clear picture that a transformer's actual
     purpose is to transform the data (so far the only type of transformation 
-    i've seen is of datatype from a matrix to a vector).
+    i've seen is for datatypes, more specifically from a matrix to a vector).
 """
 housing_tr = pd.DataFrame(X, columns=housing_num.columns, 
                         index=housing_num.index)
@@ -504,13 +507,13 @@ housing_renamed["Max cluster similarity"] = similarities.max(axis=1)
 
 """
     Plotting the clusters similarity behaviour towards the 
-    latitude and lognitude. Cluster centres are indicated with an x.
+    latitude and longitude. Cluster centres are indicated with an x.
     Population density by the size of each point, and cluster similarity by
     the color of the point. The point distribution is determined by population
     distribution algongside florida.
 
-housing_renamed.plot(kind="scatter", x="Longitude", y="Latitude", grid=True,
                     s=housing_renamed["Population"] / 100, label="Population",
+housing_renamed.plot(kind="scatter", x="Longitude", y="Latitude", grid=True,
                     c="Max cluster similarity",
                     colorbar=True,
                     legend=True, sharex=False, figsize=(10, 7))
@@ -521,4 +524,101 @@ plt.plot(cluster_simil.kmeans_.cluster_centers_[:, 1],
 plt.legend(loc="upper right")
 plt.show() 
 """
+num_pipeline = Pipeline([("impute", SimpleImputer(strategy="median")),
+("standardize", StandardScaler()),])
 
+num_pipeline = make_pipeline(SimpleImputer(strategy="median"), StandardScaler())
+housing_num_prepared = num_pipeline.fit_transform(housing_num)
+
+def monkey_patch_get_signature_names_out():
+    """Monkey patch some classes which did not handle get_feature_names_out()
+       correctly in Scikit-Learn 1.0.*."""
+    from inspect import Signature, signature, Parameter
+    import pandas as pd
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import make_pipeline, Pipeline
+    from sklearn.preprocessing import FunctionTransformer, StandardScaler
+
+    default_get_feature_names_out = StandardScaler.get_feature_names_out
+
+    if not hasattr(SimpleImputer, "get_feature_names_out"):
+      print("Monkey-patching SimpleImputer.get_feature_names_out()")
+      SimpleImputer.get_feature_names_out = default_get_feature_names_out
+
+    if not hasattr(FunctionTransformer, "get_feature_names_out"):
+        print("Monkey-patching FunctionTransformer.get_feature_names_out()")
+        orig_init = FunctionTransformer.__init__
+        orig_sig = signature(orig_init)
+
+        def __init__(*args, feature_names_out=None, **kwargs):
+            orig_sig.bind(*args, **kwargs)
+            orig_init(*args, **kwargs)
+            args[0].feature_names_out = feature_names_out
+
+        __init__.__signature__ = Signature(
+            list(signature(orig_init).parameters.values()) + [
+                Parameter("feature_names_out", Parameter.KEYWORD_ONLY)])
+
+        def get_feature_names_out(self, names=None):
+            if callable(self.feature_names_out):
+                return self.feature_names_out(self, names)
+            assert self.feature_names_out == "one-to-one"
+            return default_get_feature_names_out(self, names)
+
+        FunctionTransformer.__init__ = __init__
+        FunctionTransformer.get_feature_names_out = get_feature_names_out
+
+monkey_patch_get_signature_names_out()
+
+df_housing_num_prepared = pd.DataFrame(
+    housing_num_prepared, columns=num_pipeline.get_feature_names_out(),
+    index=housing_num.index)
+
+num_attribs = ["longitude", "latitude", "housing_median_age", "total_rooms",
+               "total_bedrooms", "population", "households", "median_income"]
+cat_attribs = ["ocean_proximity"]
+
+cat_pipeline = make_pipeline(
+    SimpleImputer(strategy="most_frequent"),
+    OneHotEncoder(handle_unknown="ignore"))
+
+preprocessing = ColumnTransformer([
+    ("num", num_pipeline, num_attribs),
+    ("cat", cat_pipeline, cat_attribs),
+])
+
+
+preprocessing = make_column_transformer(
+    (num_pipeline, make_column_selector(dtype_include=np.number)),
+    (cat_pipeline, make_column_selector(dtype_include=object)),
+)
+
+def column_ratio(X):
+    return X[:, [0]] / X[:, [1]]
+
+def ratio_name(function_transformer, feature_names_in):
+    return ["ratio"]  # feature names out
+
+def ratio_pipeline():
+    return make_pipeline(
+        SimpleImputer(strategy="median"),
+        FunctionTransformer(column_ratio, feature_names_out=ratio_name),
+        StandardScaler())
+
+log_pipeline = make_pipeline(
+    SimpleImputer(strategy="median"),
+    FunctionTransformer(np.log, feature_names_out="one-to-one"),
+    StandardScaler())
+cluster_simil = ClusterSimilarity(n_clusters=10, gamma=1., random_state=42)
+default_num_pipeline = make_pipeline(SimpleImputer(strategy="median"),
+                                     StandardScaler())
+preprocessing = ColumnTransformer([
+        ("bedrooms", ratio_pipeline(), ["total_bedrooms", "total_rooms"]),
+        ("rooms_per_house", ratio_pipeline(), ["total_rooms", "households"]),
+        ("people_per_house", ratio_pipeline(), ["population", "households"]),
+        ("log", log_pipeline, ["total_bedrooms", "total_rooms", "population",
+                               "households", "median_income"]),
+        ("geo", cluster_simil, ["latitude", "longitude"]),
+        ("cat", cat_pipeline, make_column_selector(dtype_include=object)),
+    ],
+    remainder=default_num_pipeline)  # one column remaining: housing_median_age
