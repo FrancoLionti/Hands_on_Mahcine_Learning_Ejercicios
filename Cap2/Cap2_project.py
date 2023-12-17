@@ -494,3 +494,31 @@ similarities = cluster_simil.fit_transform(housing[["latitude", "longitude"]],
 sample_weight=housing_labels)
 
 # print(similarities[:3].round(2))
+
+
+housing_renamed = housing.rename(columns={
+    "latitude": "Latitude", "longitude": "Longitude",
+    "population": "Population",
+    "median_house_value": "Median house value (usd)"})
+housing_renamed["Max cluster similarity"] = similarities.max(axis=1)
+
+"""
+    Plotting the clusters similarity behaviour towards the 
+    latitude and lognitude. Cluster centres are indicated with an x.
+    Population density by the size of each point, and cluster similarity by
+    the color of the point. The point distribution is determined by population
+    distribution algongside florida.
+
+housing_renamed.plot(kind="scatter", x="Longitude", y="Latitude", grid=True,
+                    s=housing_renamed["Population"] / 100, label="Population",
+                    c="Max cluster similarity",
+                    colorbar=True,
+                    legend=True, sharex=False, figsize=(10, 7))
+plt.plot(cluster_simil.kmeans_.cluster_centers_[:, 1],
+        cluster_simil.kmeans_.cluster_centers_[:, 0],
+        linestyle="", color="black", marker="X", markersize=20,
+        label="Cluster centers")
+plt.legend(loc="upper right")
+plt.show() 
+"""
+
