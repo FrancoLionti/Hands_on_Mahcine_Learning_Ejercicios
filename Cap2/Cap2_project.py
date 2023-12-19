@@ -29,7 +29,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array, check_is_fitted
 from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline, make_pipeline
-
+from sklearn.metrics import mean_squared_error
 
 def load_housing_data():
     tarball_path = Path("datasets/housing.tgz")
@@ -575,7 +575,7 @@ df_housing_num_prepared = pd.DataFrame(
     index=housing_num.index)
 
 num_attribs = ["longitude", "latitude", "housing_median_age", "total_rooms",
-               "total_bedrooms", "population", "households", "median_income"]
+            "total_bedrooms", "population", "households", "median_income"]
 cat_attribs = ["ocean_proximity"]
 
 cat_pipeline = make_pipeline(
@@ -611,14 +611,30 @@ log_pipeline = make_pipeline(
     StandardScaler())
 cluster_simil = ClusterSimilarity(n_clusters=10, gamma=1., random_state=42)
 default_num_pipeline = make_pipeline(SimpleImputer(strategy="median"),
-                                     StandardScaler())
+                                    StandardScaler())
 preprocessing = ColumnTransformer([
         ("bedrooms", ratio_pipeline(), ["total_bedrooms", "total_rooms"]),
         ("rooms_per_house", ratio_pipeline(), ["total_rooms", "households"]),
         ("people_per_house", ratio_pipeline(), ["population", "households"]),
         ("log", log_pipeline, ["total_bedrooms", "total_rooms", "population",
-                               "households", "median_income"]),
+                            "households", "median_income"]),
         ("geo", cluster_simil, ["latitude", "longitude"]),
         ("cat", cat_pipeline, make_column_selector(dtype_include=object)),
     ],
     remainder=default_num_pipeline)  # one column remaining: housing_median_age
+
+housing_prepared = preprocessing.fit_transform(housing)
+housing_prepared.shape
+preprocessing.get_feature_names_out()
+lin_reg = make_pipeline(preprocessing, LinearRegression())
+lin_reg.fit(housing, housing_labels)
+
+housing_predictions = lin_reg.predict(housing)
+print("Predictions: ",housing_predictions[:5].round(-2))
+print("Values: ",housing_labels.iloc[:5].values)
+
+lin_rmse = mean_squared_error(housing_labels, housing_predictions,
+squared=False)
+print("RMSE: ",lin_rmse)
+
+print("Percentage of RMSE in relation to the mean [%]: ",100*lin_rmse/housing_labels.mean())
